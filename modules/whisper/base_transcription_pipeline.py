@@ -19,6 +19,7 @@ from modules.utils.constants import *
 from modules.utils.logger import get_logger
 from modules.utils.subtitle_manager import *
 from modules.utils.youtube_manager import get_ytdata, get_ytaudio
+from modules.utils.tvp_manager import get_tvpaudio, get_tvptitle
 from modules.utils.files_manager import get_media_files, format_gradio_files, load_yaml, save_yaml, read_file
 from modules.utils.audio_manager import validate_audio
 from modules.whisper.data_classes import *
@@ -449,6 +450,78 @@ class BaseTranscriptionPipeline(ABC):
 
         except Exception as e:
             raise RuntimeError(f"Error transcribing youtube: {e}") from e
+
+    def transcribe_tvp(self,
+                       tvp_link: str,
+                       file_format: str = "SRT",
+                       add_timestamp: bool = True,
+                       progress=gr.Progress(),
+                       *pipeline_params,
+                       ) -> Tuple[str, str]:
+        """Write subtitle file from VOD TVP.
+
+        Parameters
+        ----------
+        tvp_link: str
+            URL of the TVP episode video to transcribe from gr.Textbox()
+        file_format: str
+            Subtitle File format to write from gr.Dropdown(). Supported format: [SRT, WebVTT, txt]
+        add_timestamp: bool
+            Boolean value from gr.Checkbox() that determines whether to add a timestamp at the end of the filename.
+        progress: gr.Progress
+            Indicator to show progress directly in gradio.
+        *pipeline_params: tuple
+            Parameters related with whisper. This will be dealt with "WhisperParameters" data class
+
+        Returns
+        -------
+        result_str:
+            Result of transcription to return to gr.Textbox()
+        result_file_path:
+            Output file path to return to gr.Files()
+
+        """
+        try:
+            params = TranscriptionPipelineParams.from_list(list(pipeline_params))
+            writer_options = {
+                "highlight_words": True if params.whisper.word_timestamps else False
+            }
+
+            progress(0, desc="Loading Audio from VOD TVP..")
+
+            audio = get_tvpaudio(tvp_link)
+
+            transcribed_segments, time_for_task = self.run(
+                audio,
+                progress,
+                file_format,
+                add_timestamp,
+                None,
+                *pipeline_params,
+            )
+
+            progress(1, desc="Completed!")
+
+            file_name = safe_filename(get_tvptitle(tvp_link))
+            subtitle, file_path = generate_file(
+                output_dir=self.output_dir,
+                output_file_name=file_name,
+                output_format=file_format,
+                result=transcribed_segments,
+                add_timestamp=add_timestamp,
+                **writer_options,
+            )
+
+            result_str = f"Done in {self.format_time(time_for_task)}! Subtitle file is in the outputs folder.\n\n{subtitle}"
+
+            if os.path.exists(audio):
+                os.remove(audio)
+
+            return result_str, file_path
+
+        except Exception as e:
+            raise RuntimeError(f"Error transcribing VOD TVP: {e}") from e
+        pass
 
     def get_compute_type(self):
         if "float16" in self.available_compute_types:
