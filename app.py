@@ -194,6 +194,27 @@ class App:
 
                         btn_openfolder.click(fn=lambda: self.open_folder("outputs"), inputs=None, outputs=None)
 
+                    with gr.TabItem(_("NHK School")):
+                        with gr.Row():
+                            tb_nhkschoollink = gr.Textbox(label=_("Episode Link"))
+
+                        pipeline_params, dd_file_format, cb_timestamp = self.create_pipeline_inputs()
+
+                        with gr.Row():
+                            btn_run = gr.Button(_("GENERATE SUBTITLE FILE"), variant="primary")
+                        with gr.Row():
+                            tb_indicator = gr.Textbox(label=_("Output"), scale=5)
+                            files_subtitles = gr.Files(label=_("Downloadable output file"), scale=3)
+                            btn_openfolder = gr.Button('📂', scale=1)
+
+                        params = [tb_nhkschoollink, dd_file_format, cb_timestamp]
+
+                        btn_run.click(fn=self.whisper_inf.transcribe_nhkschool,
+                                      inputs=params + pipeline_params,
+                                      outputs=[tb_indicator, files_subtitles])
+
+                        btn_openfolder.click(fn=lambda: self.open_folder("outputs"), inputs=None, outputs=None)
+
                     with gr.TabItem(_("Mic")):  # tab3
                         with gr.Row():
                             mic_input = gr.Microphone(label=_("Record with Mic"), type="filepath", interactive=True,
