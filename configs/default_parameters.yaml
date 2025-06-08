@@ -1,8 +1,8 @@
 whisper:
-  model_size: large-v3
+  model_size: large-v2
   lang: japanese
   is_translate: false
-  beam_size: 5
+  beam_size: 8
   log_prob_threshold: -1.0
   no_speech_threshold: 0.6
   compute_type: float32
@@ -35,11 +35,11 @@ whisper:
   file_format: SRT
 vad:
   vad_filter: true
-  threshold: 0.2
+  threshold: 0.25
   min_speech_duration_ms: 250
   max_speech_duration_s: 9999
-  min_silence_duration_ms: 200
-  speech_pad_ms: 200
+  min_silence_duration_ms: 1000
+  speech_pad_ms: 2000
 diarization:
   is_diarize: false
   diarization_device: cpu

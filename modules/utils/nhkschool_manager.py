@@ -7,10 +7,11 @@ from yt_dlp import YoutubeDL
 
 api_url = "https://noa-api.nhk.jp/r1/movies/?dasId={ep_id}&_source=dasId,version,title,noaTitle,noaSubtitle,noaDescription,thumbnailPath,thumbnails,topKeywords,encodings,datePublished,captionPath,partOfSeries,hasParts,isProgram"
 
+outpath = 'modules/nhkschool_tmp'
 # yt_dlp options for extracting audio and converting to mp3
 ydl_opts = {
     'format': 'bestaudio/best',
-    'outtmpl': 'modules/nhkschool_tmp',  # Output file name
+    'outtmpl': outpath,  # Output file name
     'postprocessors': [{
         'key': 'FFmpegExtractAudio',
         'preferredcodec': 'mp3',
@@ -21,7 +22,7 @@ ydl_opts = {
 }
 
 def get_nhkschoolaudio(ep_link: str):
-    audio_path  = ydl_opts["outtmpl"]+".mp3"
+    audio_path  = outpath + ".mp3"
     _, ep_id = ep_link.split("das_id=")
     res = requests.get(api_url.format(ep_id=ep_id))
     soup = BeautifulSoup(res.content, "lxml")
