@@ -9,7 +9,7 @@ import gradio as gr
 from datetime import datetime
 import traceback
 
-from modules.utils.paths import DEFAULT_PARAMETERS_CONFIG_PATH, UVR_MODELS_DIR, UVR_OUTPUT_DIR, MELBANDUVR_MODELS_DIR
+from modules.utils.paths import DEFAULT_PARAMETERS_CONFIG_PATH, UVR_MODELS_DIR, UVR_OUTPUT_DIR
 from modules.utils.files_manager import load_yaml, save_yaml, is_video
 from modules.diarize.audio_loader import load_audio
 from modules.utils.logger import get_logger
@@ -24,14 +24,12 @@ except Exception as e:
         f"Error: {type(e).__name__}: {traceback.format_exc()}"
     )
 
-from audio_separator.separator import Separator as MelbandUVRSeparator
 
 class MusicSeparator:
     def __init__(self,
                  model_dir: Optional[str] = UVR_MODELS_DIR,
                  output_dir: Optional[str] = UVR_OUTPUT_DIR):
         self.model = None
-        self.melbanduvr_separator = None
         self.device = self.get_device()
         self.available_devices = ["cpu", "cuda", "xpu", "mps"]
         self.model_dir = model_dir
@@ -41,11 +39,7 @@ class MusicSeparator:
         os.makedirs(instrumental_output_dir, exist_ok=True)
         os.makedirs(vocals_output_dir, exist_ok=True)
         self.audio_info = None
-        self.available_models = [
-            "UVR-MDX-NET-Inst_HQ_4",
-            "UVR-MDX-NET-Inst_3",
-            "MelBand Roformer Kim | Big Beta v5e"  # MelbandUVR
-        ]
+        self.available_models = ["UVR-MDX-NET-Inst_HQ_4", "UVR-MDX-NET-Inst_3", "MelBand Roformer Kim | Big Beta v5e"]
         self.default_model = self.available_models[0]
         self.current_model_size = self.default_model
         self.model_config = {
@@ -53,13 +47,18 @@ class MusicSeparator:
             "split": True
         }
 
-    def is_melbanduvr_model(self, model_name: str) -> bool:
-        return "Roformer" in model_name or "Big Beta" in model_name
-
     def update_model(self,
                      model_name: str = "UVR-MDX-NET-Inst_1",
                      device: Optional[str] = None,
                      segment_size: int = 256):
+        """
+        Update model with the given model name
+
+        Args:
+            model_name (str): Model name.
+            device (str): Device to use for the model.
+            segment_size (int): Segment size for the prediction.
+        """
         if device is None:
             device = self.device
 
@@ -68,20 +67,11 @@ class MusicSeparator:
             "segment": segment_size,
             "split": True
         }
-
-        self.current_model_size = model_name
-
-        if self.is_melbanduvr_model(model_name):
-            if self.melbanduvr_separator is None:
-                self.melbanduvr_separator = MelbandUVRSeparator(model_file_dir=MELBANDUVR_MODELS_DIR)
-                self.melbanduvr_separator.load_model("melband_roformer_big_beta5e.ckpt")
-            self.model = self.melbanduvr_separator
-        else:
-            self.model = MDX(name=model_name,
-                             other_metadata=self.model_config,
-                             device=self.device,
-                             logger=None,
-                             model_dir=self.model_dir)
+        self.model = MDX(name=model_name,
+                         other_metadata=self.model_config,
+                         device=self.device,
+                         logger=None,
+                         model_dir=self.model_dir)
 
     def separate(self,
                  audio: Union[str, np.ndarray],
@@ -90,6 +80,23 @@ class MusicSeparator:
                  segment_size: int = 256,
                  save_file: bool = False,
                  progress: gr.Progress = gr.Progress()) -> tuple[np.ndarray, np.ndarray, List]:
+        """
+        Separate the background music from the audio.
+
+        Args:
+            audio (Union[str, np.ndarray]): Audio path or numpy array.
+            model_name (str): Model name.
+            device (str): Device to use for the model.
+            segment_size (int): Segment size for the prediction.
+            save_file (bool): Whether to save the separated audio to output path or not.
+            progress (gr.Progress): Gradio progress indicator.
+
+        Returns:
+            A Tuple of
+            np.ndarray: Instrumental numpy arrays.
+            np.ndarray: Vocals numpy arrays.
+            file_paths: List of file paths where the separated audio is saved. Return empty when save_file is False.
+        """
         if isinstance(audio, str):
             output_filename, ext = os.path.basename(audio), ".wav"
             output_filename, orig_ext = os.path.splitext(output_filename)
@@ -113,44 +120,28 @@ class MusicSeparator:
         if (self.model is None or
                 self.current_model_size != model_name or
                 self.model_config != model_config or
-                (not self.is_melbanduvr_model(model_name) and getattr(self.model, "sample_rate", sample_rate) != sample_rate) or
+                self.model.sample_rate != sample_rate or
                 self.device != device):
-            progress(0, desc="Initializing Separation Model..")
+            progress(0, desc="Initializing UVR Model..")
             self.update_model(
                 model_name=model_name,
                 device=device,
                 segment_size=segment_size
             )
-            if not self.is_melbanduvr_model(model_name):
-                self.model.sample_rate = sample_rate
+            self.model.sample_rate = sample_rate
 
-        progress(0, desc="Separating background music from the audio..")
-        if self.is_melbanduvr_model(model_name):
-            if isinstance(audio, np.ndarray):
-                # Save temp wav file for MelbandUVR
-                temp_path = os.path.join(self.output_dir, f"temp_input_{datetime.now().strftime('%H%M%S')}.wav")
-                sf.write(temp_path, audio, sample_rate, format="WAV")
-                audio = temp_path
+        progress(0, desc="Separating background music from the audio.. "
+                         "(It will only display 0% until the job is complete.) ")
+        result = self.model(audio)
+        instrumental, vocals = result["instrumental"].T, result["vocals"].T
 
-            result_paths = self.model.separate(audio)
-            vocals_path = [p for p in result_paths if "vocals" in p.lower()][0]
-            instrumental_path = [p for p in result_paths if "instrumental" in p.lower()][0]
-
-            vocals, _ = sf.read(vocals_path)
-            instrumental, _ = sf.read(instrumental_path)
-
-            file_paths = [instrumental_path, vocals_path] if save_file else []
-        else:
-            result = self.model(audio)
-            instrumental, vocals = result["instrumental"].T, result["vocals"].T
-            file_paths = []
-
-            if save_file:
-                instrumental_output_path = os.path.join(self.output_dir, "instrumental", f"{output_filename}-instrumental{ext}")
-                vocals_output_path = os.path.join(self.output_dir, "vocals", f"{output_filename}-vocals{ext}")
-                sf.write(instrumental_output_path, instrumental, sample_rate, format="WAV")
-                sf.write(vocals_output_path, vocals, sample_rate, format="WAV")
-                file_paths = [instrumental_output_path, vocals_output_path]
+        file_paths = []
+        if save_file:
+            instrumental_output_path = os.path.join(self.output_dir, "instrumental", f"{output_filename}-instrumental{ext}")
+            vocals_output_path = os.path.join(self.output_dir, "vocals", f"{output_filename}-vocals{ext}")
+            sf.write(instrumental_output_path, instrumental, sample_rate, format="WAV")
+            sf.write(vocals_output_path, vocals, sample_rate, format="WAV")
+            file_paths += [instrumental_output_path, vocals_output_path]
 
         return instrumental, vocals, file_paths
 

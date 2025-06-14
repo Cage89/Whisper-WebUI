@@ -1,6 +1,6 @@
 whisper:
   model_size: large-v2
-  lang: japanese
+  lang: polish
   is_translate: false
   beam_size: 8
   log_prob_threshold: -1.0
@@ -46,11 +46,11 @@ diarization:
   hf_token: ''
   enable_offload: true
 bgm_separation:
-  is_separate_bgm: true
-  uvr_model_size: UVR-MDX-NET-Inst_HQ_4
+  is_separate_bgm: false
+  uvr_model_size: UVR-MDX-NET-Inst_3
   uvr_device: cpu
   segment_size: 256
-  save_file: false
+  save_file: true
   enable_offload: true
 translation:
   deepl:

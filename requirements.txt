@@ -1,4 +1,4 @@
---extra-index-url https://download.pytorch.org/whl/cu124
+
 
 # Update above --extra-index-url according to your device.
 
@@ -10,19 +10,25 @@
 # https://download.pytorch.org/whl/xpu
 
 
-torch
-torchaudio
+# Manual torch install: pip install --upgrade --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# then run pip install -r requirements.txt
+
+#torch --index-url https://download.pytorch.org/whl/cu121 
+#torchaudio --index-url https://download.pytorch.org/whl/cu121
+onnxruntime-gpu
+audio-separator[gpu]
 git+https://github.com/jhj0517/jhj0517-whisper.git
-faster-whisper==1.1.1
-transformers==4.47.1
+faster-whisper
+transformers
 gradio
-gradio-i18n==0.3.0
+gradio-i18n
 pytubefix
-ruamel.yaml==0.18.6
-pyannote.audio==3.3.2
+ruamel.yaml
+pyannote.audio
 git+https://github.com/jhj0517/ultimatevocalremover_api.git
 git+https://github.com/jhj0517/pyrubberband.git
 selenium
 beautifulsoup4
 lxml
 pywidevine
+
