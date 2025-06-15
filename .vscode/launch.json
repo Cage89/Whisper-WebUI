@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Gradio App",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/app.py", // Replace with your actual main file
+      "console": "integratedTerminal",
+      "env": {
+        "GRADIO_ANALYTICS_ENABLED": "False"
+      }
+    }
+  ]
+}

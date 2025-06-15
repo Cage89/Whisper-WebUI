@@ -26,6 +26,12 @@ except Exception as e:
 
 from audio_separator.separator import Separator as MelbandUVRSeparator
 
+melband_models = {
+    "MelBand Roformer Kim | Big Beta v5e": "melband_roformer_big_beta5e.ckpt",
+    "MelBand Roformer | Big Beta 6 by unwa": "melband_roformer_big_beta6.ckpt",
+    "MelBand Roformer | Big Beta 6X by unwa": "melband_roformer_big_beta6x.ckpt",
+}
+
 class MusicSeparator:
     def __init__(self,
                  model_dir: Optional[str] = UVR_MODELS_DIR,
@@ -44,7 +50,9 @@ class MusicSeparator:
         self.available_models = [
             "UVR-MDX-NET-Inst_HQ_4",
             "UVR-MDX-NET-Inst_3",
-            "MelBand Roformer Kim | Big Beta v5e"  # MelbandUVR
+            "MelBand Roformer Kim | Big Beta v5e",
+            "MelBand Roformer | Big Beta 6 by unwa",
+            "MelBand Roformer | Big Beta 6X by unwa"
         ]
         self.default_model = self.available_models[0]
         self.current_model_size = self.default_model
@@ -73,8 +81,8 @@ class MusicSeparator:
 
         if self.is_melbanduvr_model(model_name):
             if self.melbanduvr_separator is None:
-                self.melbanduvr_separator = MelbandUVRSeparator(model_file_dir=MELBANDUVR_MODELS_DIR)
-                self.melbanduvr_separator.load_model("melband_roformer_big_beta5e.ckpt")
+                self.melbanduvr_separator = MelbandUVRSeparator(model_file_dir=MELBANDUVR_MODELS_DIR, sample_rate=16e3)
+                self.melbanduvr_separator.load_model(melband_models[model_name])
             self.model = self.melbanduvr_separator
         else:
             self.model = MDX(name=model_name,
@@ -133,13 +141,25 @@ class MusicSeparator:
                 audio = temp_path
 
             result_paths = self.model.separate(audio)
-            vocals_path = [p for p in result_paths if "vocals" in p.lower()][0]
-            instrumental_path = [p for p in result_paths if "instrumental" in p.lower()][0]
+            logger.info(result_paths)
+            logger.info(p for p in result_paths)
+            logger.info(f"result_paths: {len(result_paths)}")
+            vocals_path = [p for p in result_paths if "(vocals)" in p.lower()][0]
+            instrumental_path = [p for p in result_paths if "(other)" in p.lower()][0]
+            vocals, sr = sf.read(vocals_path)
+            instrumental, sr = sf.read(instrumental_path)
 
-            vocals, _ = sf.read(vocals_path)
-            instrumental, _ = sf.read(instrumental_path)
+            file_paths = []
 
-            file_paths = [instrumental_path, vocals_path] if save_file else []
+            if save_file:
+                instrumental_output_path = os.path.join(self.output_dir, "instrumental", f"{output_filename}-instrumental{ext}")
+                vocals_output_path = os.path.join(self.output_dir, "vocals", f"{output_filename}-vocals{ext}")
+                sf.write(instrumental_output_path, instrumental, sr, format="WAV")
+                sf.write(vocals_output_path, vocals, sr, format="WAV")
+                file_paths = [instrumental_output_path, vocals_output_path]
+            vocals = vocals.astype(np.float32)
+            instrumental = instrumental.astype(np.float32)
+
         else:
             result = self.model(audio)
             instrumental, vocals = result["instrumental"].T, result["vocals"].T

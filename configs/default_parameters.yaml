@@ -1,5 +1,5 @@
 whisper:
-  model_size: large-v2
+  model_size: large-v3
   lang: polish
   is_translate: false
   beam_size: 8
@@ -34,7 +34,7 @@ whisper:
   add_timestamp: false
   file_format: SRT
 vad:
-  vad_filter: true
+  vad_filter: false
   threshold: 0.25
   min_speech_duration_ms: 250
   max_speech_duration_s: 9999
@@ -42,13 +42,13 @@ vad:
   speech_pad_ms: 2000
 diarization:
   is_diarize: false
-  diarization_device: cpu
+  diarization_device: cuda
   hf_token: ''
   enable_offload: true
 bgm_separation:
-  is_separate_bgm: false
-  uvr_model_size: UVR-MDX-NET-Inst_3
-  uvr_device: cpu
+  is_separate_bgm: true
+  uvr_model_size: MelBand Roformer Kim | Big Beta v5e
+  uvr_device: cuda
   segment_size: 256
   save_file: true
   enable_offload: true
