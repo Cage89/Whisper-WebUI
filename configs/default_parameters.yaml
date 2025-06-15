@@ -47,7 +47,7 @@ diarization:
   enable_offload: true
 bgm_separation:
   is_separate_bgm: true
-  uvr_model_size: MelBand Roformer Kim | Big Beta v5e
+  uvr_model_size: MelBand Roformer | Big Beta 6 by unwa
   uvr_device: cuda
   segment_size: 256
   save_file: true

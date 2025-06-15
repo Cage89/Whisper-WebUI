@@ -82,7 +82,7 @@ class MusicSeparator:
         if self.is_melbanduvr_model(model_name):
             if self.melbanduvr_separator is None:
                 self.melbanduvr_separator = MelbandUVRSeparator(model_file_dir=MELBANDUVR_MODELS_DIR, sample_rate=16e3)
-                self.melbanduvr_separator.load_model(melband_models[model_name])
+            self.melbanduvr_separator.load_model(melband_models[model_name])
             self.model = self.melbanduvr_separator
         else:
             self.model = MDX(name=model_name,
